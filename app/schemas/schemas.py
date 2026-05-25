@@ -7,15 +7,16 @@ from pydantic import BaseModel, ConfigDict, Field
 # ── Bank Account ──────────────────────────────────────────────────────────────
 
 class BankAccountCreate(BaseModel):
-    bank_name:   str
-    bank_type:   str
-    start_value: float = 0.0000
+    bank_name:      str
+    account_name:   str
+    account_type:   str
+    start_value:    float = 0.0000
 
 
 class BankAccountUpdate(BaseModel):
-    bank_name:   str | None = None
-    bank_type:   str | None = None
-    start_value: float | None = None
+    bank_name:      str | None = None
+    account_type:   str | None = None
+    start_value:    float | None = None
 
 
 class BankAccountRead(BankAccountCreate):
@@ -51,3 +52,16 @@ class TransactionRead(TransactionCreate):
 
     transaction_id: int
     created_at:     datetime
+
+# ── Banks ───────────────────────────────────────────────────────────────
+
+class BanksCreate(BaseModel):
+    bank_name:      str
+
+class BanksUpdate(BaseModel):
+    bank_name:      str | None = None
+
+class BanksRead(BanksCreate):
+    model_config = ConfigDict(from_attributes=True)
+
+    bank_id: int
