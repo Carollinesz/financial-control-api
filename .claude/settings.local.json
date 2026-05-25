@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(conda run *)",
+      "PowerShell(Get-Command conda -ErrorAction SilentlyContinue; \\(Get-Command python -ErrorAction SilentlyContinue\\).Source)",
+      "Bash(cat .env.example)",
+      "Bash(cat requirements*.txt)",
+      "Bash(cat pyproject.toml)",
+      "Bash(python -c \"from app.main import app; [print\\(r.path, sorted\\(r.methods or []\\)\\) for r in app.routes]\")"
+    ]
+  }
+}
