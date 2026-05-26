@@ -3,7 +3,7 @@ from logging.config import fileConfig
 from sqlalchemy import engine_from_config
 from sqlalchemy import pool
 
-from app.models.models import table_registry
+from app.models.models import Base
 
 from app.core.config import settings
 
@@ -13,7 +13,7 @@ config = context.config
 
 config.set_main_option('sqlalchemy.url', settings.DATABASE_URL)
 
-target_metadata = table_registry.metadata
+target_metadata = Base.metadata
 
 
 if config.config_file_name is not None:

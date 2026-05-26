@@ -1,3 +1,6 @@
+import pandas as pd
+from ofxparse import OfxParser
+
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from app.models.models import transaction
@@ -29,6 +32,8 @@ def create(db: Session, data: dict) -> transaction:
     return obj
 
 
+
+
 def update(db: Session, obj: transaction, data: dict) -> transaction:
     for key, value in data.items():
         setattr(obj, key, value)
@@ -40,4 +45,13 @@ def update(db: Session, obj: transaction, data: dict) -> transaction:
 def delete(db: Session, obj: transaction) -> None:
     db.delete(obj)
     db.commit()
+
+
+def bulk_create(db: Session, rows: list[dict]) -> list[transaction]:
+    objs = [transaction(**row) for row in rows]
+    db.add_all(objs)
+    db.commit()
+    for obj in objs:
+        db.refresh(obj)
+    return objs
 

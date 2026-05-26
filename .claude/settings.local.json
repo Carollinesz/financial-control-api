@@ -6,7 +6,10 @@
       "Bash(cat .env.example)",
       "Bash(cat requirements*.txt)",
       "Bash(cat pyproject.toml)",
-      "Bash(python -c \"from app.main import app; [print\\(r.path, sorted\\(r.methods or []\\)\\) for r in app.routes]\")"
+      "Bash(python -c \"from app.main import app; [print\\(r.path, sorted\\(r.methods or []\\)\\) for r in app.routes]\")",
+      "Bash(pip show *)",
+      "Bash(Select-String \"Name|Version|not found\")",
+      "Bash(pip install *)"
     ]
   }
 }

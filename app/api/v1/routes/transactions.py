@@ -1,8 +1,8 @@
-from fastapi import APIRouter, Depends, Query, status, HTTPException
+from fastapi import APIRouter, Depends, File, Form, Query, UploadFile, status, HTTPException
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.schemas.schemas import TransactionCreate, TransactionRead, TransactionUpdate
+from app.schemas.schemas import TransactionCreate, TransactionRead, TransactionUpdate, TransactionUploadResult
 from app.services import transactions as service
 
 router = APIRouter(prefix="/transactions", tags=["transactions"])
@@ -47,3 +47,19 @@ def handle_update_transaction(
 @router.delete("/{transaction_id}", status_code=status.HTTP_204_NO_CONTENT)
 def handle_delete_transaction(transaction_id: int, db: Session = Depends(get_db)):
     service.handle_delete(db, transaction_id)
+
+
+@router.post("/upload", response_model=TransactionUploadResult, status_code=status.HTTP_200_OK)
+async def handle_upload_transactions(
+    account_id: int = Form(...),
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+):
+    filename = file.filename or ""
+    if not (filename.endswith(".xlsx") or filename.endswith(".xls")):
+        raise HTTPException(
+            status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+            detail="Only .xlsx and .xls files are supported",
+        )
+    contents = await file.read()
+    return service.handle_upload_xlsx(db, account_id, contents, filename)

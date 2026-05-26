@@ -1,24 +1,17 @@
 from decimal import Decimal
 from datetime import datetime, date
-import json 
+from app.core.database import engine
 
-from sqlalchemy import CheckConstraint, Date, ForeignKey, Numeric, String, TIMESTAMP, func
+from sqlalchemy import CheckConstraint, Date, ForeignKey, Numeric, String, TIMESTAMP, func, event
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, registry, MappedAsDataclass
 from sqlalchemy.dialects.postgresql import JSONB
 
-with open('./app/constants/banks.json') as f:
-    avaliable_banks = json.load(f)['brazilian_banks']
 
-avaliable_banks_sql = "(" + ", ".join(f"'{b}'" for b in avaliable_banks) + ")"
-
-
-table_registry = registry()
 
 class Base(DeclarativeBase, MappedAsDataclass):
     pass
 
-@table_registry.mapped_as_dataclass()
-class bank_account():
+class bank_account(Base):
     __tablename__ = "bank_accounts"
 
     account_id:       Mapped[int]           = mapped_column(init=False, primary_key=True, autoincrement=True)
@@ -30,28 +23,27 @@ class bank_account():
     )
     account_name:     Mapped[str]           = mapped_column(String(100), nullable=False, unique=True)  
     account_type:     Mapped[str]           = mapped_column(String(100), nullable=False)
-    start_value:      Mapped[Decimal]       = mapped_column(Numeric(18, 4), nullable=True, default=0.0)
+    start_value:      Mapped[Decimal]       = mapped_column(Numeric(10, 4), nullable=True, default=0.0)
     created_at:       Mapped[datetime]      = mapped_column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False, init=False)
 
     __table_args__ = (
         CheckConstraint("-999000000000 < start_value AND start_value < 999000000000", name="check_start_value_limit"),
     )
 
-@table_registry.mapped_as_dataclass()
-class transaction:
+class transaction(Base):
     __tablename__ = "transactions"
     __mapper_args__ = {"polymorphic_on": "type", "polymorphic_identity": "transaction"}
 
     transaction_id:   Mapped[int]            = mapped_column(init=False, primary_key=True, autoincrement=True)
-    account_id:       Mapped[int]            = mapped_column(nullable=False)
     transaction_date: Mapped[date]           = mapped_column(Date, nullable=False)
-    value:            Mapped[Decimal]        = mapped_column(Numeric(18, 4), nullable=False)
+    value:            Mapped[Decimal]        = mapped_column(Numeric(10, 4), nullable=False)
     description:      Mapped[str]            = mapped_column(String(100), nullable=False)
     bank_account:     Mapped["bank_account"] = relationship(
             init=False,
             primaryjoin="transaction.account_id == bank_account.account_id",
             foreign_keys="transaction.account_id"
     )
+    account_id:       Mapped[int]            = mapped_column(nullable=False, default=0, server_default="0")
     type:             Mapped[str]            = mapped_column(String(50), nullable=False, default='debit')
     details:          Mapped[dict]           = mapped_column(JSONB, nullable=True, default=None)
     category:         Mapped[str]            = mapped_column(String(100), nullable=True, default='Outros')
@@ -84,10 +76,19 @@ class transaction:
             elif not isinstance(fp, date):
                 raise ValueError("first_payment must be a date type or a valid ISO date string")
 
-@table_registry.mapped_as_dataclass()
-class banks():
+class banks(Base):
     __tablename__ = "avaliable_banks"
 
     bank_id:       Mapped[int]           = mapped_column(init=False, primary_key=True, autoincrement=True)
     bank_name:     Mapped[str]           = mapped_column(String(100), nullable=False)
     created_at:    Mapped[datetime]      = mapped_column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False, init=False)
+
+
+
+@event.listens_for(banks.__table__, 'after_create')
+def insert_default_bank(target, connection, **kw):
+    connection.execute(
+        target.insert().values(bank_id=0, bank_name='Outros')
+    )
+
+Base.metadata.create_all(engine)

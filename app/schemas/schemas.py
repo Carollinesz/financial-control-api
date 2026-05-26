@@ -65,3 +65,15 @@ class BanksRead(BanksCreate):
     model_config = ConfigDict(from_attributes=True)
 
     bank_id: int
+
+
+# ── Upload ────────────────────────────────────────────────────────────────────
+
+class UploadRowError(BaseModel):
+    row: int
+    error: str
+
+
+class TransactionUploadResult(BaseModel):
+    created: int
+    errors: list[UploadRowError]
