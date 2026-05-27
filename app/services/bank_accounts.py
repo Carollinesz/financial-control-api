@@ -21,10 +21,10 @@ def handle_list(db: Session, skip: int, limit: int) -> list[bank_account]:
 
 
 def handle_create(db: Session, payload: BankAccountCreate) -> bank_account:
-    if repo.get_by_name(db, payload.bank_name) is not None:
+    if repo.get_by_name(db, payload.account_name) is not None:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail=f"Bank account '{payload.bank_name}' already exists",
+            detail=f"Bank account '{payload.account_name}' already exists",
         )
     return repo.create(db, payload.model_dump())
 
@@ -34,6 +34,9 @@ def handle_update(
 ) -> bank_account:
     obj = handle_get(db, account_id)
     data = payload.model_dump(exclude_unset=True)
+
+    
+
     if "bank_name" in data and data["bank_name"] != obj.bank_name:
         if repo.get_by_name(db, data["bank_name"]) is not None:
             raise HTTPException(

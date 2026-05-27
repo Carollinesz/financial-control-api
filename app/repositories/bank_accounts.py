@@ -8,8 +8,8 @@ def get_by_id(db: Session, account_id: int) -> bank_account | None:
     return db.get(bank_account, account_id)
 
 
-def get_by_name(db: Session, bank_name: str) -> bank_account | None:
-    stmt = select(bank_account).where(bank_account.bank_name == bank_name)
+def get_by_name(db: Session, account_name: str) -> bank_account | None:
+    stmt = select(bank_account).where(bank_account.account_name == account_name)
     return db.execute(stmt).scalar_one_or_none()
 
 

@@ -3,6 +3,7 @@ from decimal import Decimal, InvalidOperation
 
 import pandas as pd
 from fastapi import HTTPException, status
+from ofxparse import OfxParser
 from sqlalchemy.orm import Session
 from datetime import date
 
@@ -12,13 +13,13 @@ from app.repositories import transactions as repo
 from app.schemas.schemas import TransactionCreate, TransactionUpdate, TransactionUploadResult, UploadRowError
 
 
-
 def _ensure_account_exists(db: Session, account_id: int) -> None:
     if bank_accounts_repo.get_by_id(db, account_id) is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Bank account {account_id} not found",
         )
+
 
 
 def handle_get(db: Session, transaction_id: int) -> transaction:
@@ -40,12 +41,28 @@ def handle_create(db: Session, payload: TransactionCreate) -> transaction:
     return repo.create(db, payload.model_dump())
 
 
+_UPDATABLE_FIELDS = {"account_id", "transaction_date", "value", "description", "category"}
+
+
+def _merge_update_data(obj: transaction, data: dict) -> dict:
+    return {field: data.get(field, getattr(obj, field)) for field in _UPDATABLE_FIELDS}
+
+
 def handle_update(
     db: Session, transaction_id: int, payload: TransactionUpdate
 ) -> transaction:
     obj = handle_get(db, transaction_id)
     data = payload.model_dump(exclude_unset=True)
-    if "account_id" in data:
+    invalid_fields = set(data.keys()) - _UPDATABLE_FIELDS
+    if invalid_fields:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Invalid fields: {', '.join(sorted(invalid_fields))}",
+        )
+
+    data = _merge_update_data(obj, payload.model_dump(exclude_unset=True))
+
+    if data["account_id"] != obj.account_id:
         _ensure_account_exists(db, data["account_id"])
     return repo.update(db, obj, data)
 
@@ -56,58 +73,128 @@ def handle_delete(db: Session, transaction_id: int) -> None:
 
 
 _REQUIRED_COLUMNS = {"transaction_date", "value", "description"}
+_OPTIONAL_COLUMNS = {"accountid_id", "category"}
+
+def handle_bulk_upload(db: Session, file_bytes: bytes, filename: str) -> TransactionUploadResult:
+    if filename.endswith(".xlsx") or filename.endswith(".xls"):
+        engine = "openpyxl" if filename.endswith(".xlsx") else "xlrd"
+        try:
+            df = pd.read_excel(io.BytesIO(file_bytes), engine=engine)
+        except Exception as exc:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Could not read file: {exc}")
+
+        df.columns = df.columns.str.strip().str.lower()
+
+        missing = _REQUIRED_COLUMNS - set(df.columns)
+        if missing:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"Missing required columns: {', '.join(sorted(missing))}",
+            )
+
+        df = df.astype(object).where(df.notna(), None)
+
+        return handle_upload_rows(db, df)
+
+    if filename.endswith(".ofx"):
+        return handle_upload_ofx(db, file_bytes)
 
 
-def handle_upload_xlsx(db: Session, account_id: int, file_bytes: bytes, filename: str) -> TransactionUploadResult:
-    _ensure_account_exists(db, account_id)
-
-    engine = "openpyxl" if filename.endswith(".xlsx") else "xlrd"
+def handle_upload_ofx(db: Session, file_bytes: bytes) -> TransactionUploadResult:
     try:
-        df = pd.read_excel(io.BytesIO(file_bytes), engine=engine)
+        ofx = OfxParser.parse(io.BytesIO(file_bytes))
     except Exception as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Could not read file: {exc}")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Could not read OFX file: {exc}")
 
-    missing = _REQUIRED_COLUMNS - set(df.columns.str.strip().str.lower())
-    if missing:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=f"Missing required columns: {', '.join(sorted(missing))}",
-        )
+    try:
+        raw_transactions = ofx.account.statement.transactions
+    except AttributeError:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="OFX file has no transaction data")
 
-    df.columns = df.columns.str.strip().str.lower()
+    rows = [
+        {
+            "transaction_date": txn.date.date() if hasattr(txn.date, "date") else txn.date,
+            "value": txn.amount,
+            "description": txn.memo or txn.payee or "",
+        }
+        for txn in raw_transactions
+    ]
+    df = pd.DataFrame(rows)
+    return handle_upload_rows(db, df)
 
+
+def handle_upload_rows(db: Session, df: pd.DataFrame) -> TransactionUploadResult:
     valid_rows: list[dict] = []
     errors: list[UploadRowError] = []
 
     for idx, row in df.iterrows():
-        row_num = int(idx) + 2  # +2: 1-based + header row
+        row_num = int(idx)
+        raw_date = row["transaction_date"]
+        raw_value = row["value"]
+        raw_desc = row["description"]
+        raw_category = row.get("category", None)
+        raw_account_id = row.get("account_id", 0)
+        row_has_error = False
+
+        parsed_category = str(raw_category).strip()[:100]
+
+        
+        def  _error_row_(message):
+            errors.append(UploadRowError(errors={
+                "message": message,
+                "row": row_num,
+                "transaction_date": str(raw_date),
+                "value": str(raw_value),
+                "description": raw_desc,
+                "category": raw_category,
+                "account_id": str(raw_account_id)
+            }))
+
         try:
-            raw_date = row["transaction_date"]
+            if raw_account_id: 
+                if bank_accounts_repo.get_by_id(db, int(raw_account_id)) is None:
+                    print(int(raw_account_id))
+                    raise ValueError("Bank account {raw_account_id} not found")
+            parsed_account_id = int(raw_account_id) if raw_account_id else raw_account_id
+        except (ValueError, InvalidOperation):
+            _error_row_(f"Bank account {raw_account_id} not found")
+            row_has_error = True
+
+        try:
             if pd.isna(raw_date):
                 raise ValueError("transaction_date is required")
             if isinstance(raw_date, str):
                 parsed_date = date.fromisoformat(raw_date.strip())
             else:
                 parsed_date = pd.Timestamp(raw_date).date()
+        except (ValueError, InvalidOperation):
+            _error_row_("transaction date not accepted")
+            row_has_error = True
 
-            raw_value = row["value"]
+        try:
             if pd.isna(raw_value):
                 raise ValueError("value is required")
             parsed_value = Decimal(str(raw_value)).quantize(Decimal("0.0001"))
+        except (ValueError, InvalidOperation):
+            _error_row_("value not accepted")
+            row_has_error = True
 
-            raw_desc = row["description"]
+        try:
             if pd.isna(raw_desc) or str(raw_desc).strip() == "":
                 raise ValueError("description is required")
             parsed_desc = str(raw_desc).strip()[:100]
+        except (ValueError, InvalidOperation):
+            _error_row_("description not accepted")
+            row_has_error = True
 
+        if not row_has_error:
             valid_rows.append({
-                "account_id": account_id,
                 "transaction_date": parsed_date,
                 "value": parsed_value,
                 "description": parsed_desc,
+                "account_id": parsed_account_id,
+                "category": parsed_category
             })
-        except (ValueError, InvalidOperation) as exc:
-            errors.append(UploadRowError(row=row_num, error=str(exc)))
 
     if valid_rows:
         repo.bulk_create(db, valid_rows)

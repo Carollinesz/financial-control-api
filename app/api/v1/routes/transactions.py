@@ -51,15 +51,14 @@ def handle_delete_transaction(transaction_id: int, db: Session = Depends(get_db)
 
 @router.post("/upload", response_model=TransactionUploadResult, status_code=status.HTTP_200_OK)
 async def handle_upload_transactions(
-    account_id: int = Form(...),
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
 ):
     filename = file.filename or ""
-    if not (filename.endswith(".xlsx") or filename.endswith(".xls")):
+    if not (filename.endswith(".xlsx") or filename.endswith(".xls") or filename.endswith(".ofx")):
         raise HTTPException(
             status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
-            detail="Only .xlsx and .xls files are supported",
+            detail="Only .xlsx, .xls, .ofx files are supported",
         )
     contents = await file.read()
-    return service.handle_upload_xlsx(db, account_id, contents, filename)
+    return service.handle_bulk_upload(db, contents, filename)

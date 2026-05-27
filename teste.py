@@ -1,24 +1,7 @@
-from ofxparse import OfxParser
-import pandas as pd
+set1 = {'a', 'b', 'c'}
+set2 = {'a', 'b', 'c'}
 
-# Abre e processa o arquivo
-with open("./Extrato Conta Corrente-2026.ofx", "rb") as arquivo:
-    ofx = OfxParser.parse(arquivo)
 
-# Lista para armazenar os dados do loop
-dados_transacoes = []
-
-for transacao in ofx.account.statement.transactions:
-    dados_transacoes.append({
-        "transaction_date": transacao.date,
-        "value": float(transacao.amount),
-        "description": transacao.memo
-    })
-
-# Cria o DataFrame
-df = pd.DataFrame(dados_transacoes)
-
-# Exibe as primeiras linhas da tabela
-print(df.head())
-
-df.to_clipboard()
+set3 = set1 - set2
+if set3 is None:
+    print(set3)

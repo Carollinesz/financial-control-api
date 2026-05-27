@@ -1,5 +1,6 @@
 from datetime import datetime, date
 from decimal import Decimal
+from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -7,7 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field
 # ── Bank Account ──────────────────────────────────────────────────────────────
 
 class BankAccountCreate(BaseModel):
-    bank_name:      str
+    bank_id:        int
     account_name:   str
     account_type:   str
     start_value:    float = 0.0000
@@ -28,13 +29,13 @@ class BankAccountRead(BankAccountCreate):
 # ── Transaction ───────────────────────────────────────────────────────────────
 
 class TransactionCreate(BaseModel):
-    account_id:       int
+    account_id:       int  | None = 0
     transaction_date: date
     value:            Decimal = Field(decimal_places=2)
     description:      str
     category:         str  | None = None
-    type:             str  | None = None
-    details:          dict | None = None
+    type:             str  | None = 'debit'
+    details:          Optional[dict] = None
 
 
 class TransactionUpdate(BaseModel):
@@ -44,7 +45,7 @@ class TransactionUpdate(BaseModel):
     description:      str | None = None
     category:         str | None = None
     type:             str | None = None
-    details:          dict | None = None
+    details:          Optional[dict] = None
 
 
 class TransactionRead(TransactionCreate):
@@ -70,8 +71,7 @@ class BanksRead(BanksCreate):
 # ── Upload ────────────────────────────────────────────────────────────────────
 
 class UploadRowError(BaseModel):
-    row: int
-    error: str
+    errors:   dict 
 
 
 class TransactionUploadResult(BaseModel):

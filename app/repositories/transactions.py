@@ -9,7 +9,7 @@ from app.schemas.schemas import TransactionCreate
 
 def get_by_id(db: Session, transaction_id: int) -> transaction | None:
     obj = db.get(transaction, transaction_id)
-    if obj is None or obj.type != "transaction":
+    if obj is None:
         return None
     return obj
 
@@ -17,7 +17,6 @@ def get_by_id(db: Session, transaction_id: int) -> transaction | None:
 def list_all(db: Session, skip: int = 0, limit: int = 100) -> list[transaction]:
     stmt = (
         select(transaction)
-        .where(transaction.type == "transaction")
         .offset(skip)
         .limit(limit)
     )
