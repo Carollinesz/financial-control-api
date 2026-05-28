@@ -14,7 +14,7 @@ This is a microservice to control personal finances, it won't have a frontend, j
 ## Tech Stack
 
 - **Database:** PostgreeSQL 4
-- **Backend:** Python 3.13.9, SQLalchemy, swagger, alembic, fastapi
+- **Backend:** Python 3.13, SQLalchemy, swagger, alembic, fastapi
 
 ## Code Quality
 
@@ -84,3 +84,45 @@ This is a microservice to control personal finances, it won't have a frontend, j
 │   │   │   └── transactions.py
 │   ├── tests/ **pytest**
 │   │   └── conftest.py
+
+## Setup
+
+Activate the conda environment (dependencies already installed):
+
+```bash
+conda activate financial-control
+```
+
+Copy environment variables:
+
+```bash
+cp .env.example .env
+```
+
+## Run
+
+```bash
+uvicorn app.main:app --reload
+```
+
+API docs: http://localhost:8000/api/v1/docs
+
+## Migrations
+
+Create a new migration:
+
+```bash
+alembic revision --autogenerate -m "message"
+```
+
+Apply migrations:
+
+```bash
+alembic upgrade head
+```
+
+## Tests
+
+```bash
+pytest
+```

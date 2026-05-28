@@ -1,8 +1,11 @@
 from datetime import datetime, date
 from decimal import Decimal
-from typing import Optional
+from typing import Annotated, Optional
+
 
 from pydantic import BaseModel, ConfigDict, Field
+
+Money = Annotated[Decimal, Field(max_digits=15, decimal_places=2)]
 
 
 # ── Bank Account ──────────────────────────────────────────────────────────────
@@ -15,7 +18,7 @@ class BankAccountCreate(BaseModel):
 
 
 class BankAccountUpdate(BaseModel):
-    bank_name:      str | None = None
+    account_name:      str | None = None
     account_type:   str | None = None
     start_value:    float | None = None
 
@@ -31,7 +34,7 @@ class BankAccountRead(BankAccountCreate):
 class TransactionCreate(BaseModel):
     account_id:       int  | None = 0
     transaction_date: date
-    value:            Decimal = Field(decimal_places=2)
+    value:            Money
     description:      str
     category:         str  | None = None
     type:             str  | None = 'debit'
@@ -41,7 +44,7 @@ class TransactionCreate(BaseModel):
 class TransactionUpdate(BaseModel):
     account_id:       int | None = None
     transaction_date: date | None = None
-    value:            Decimal | None = Field(default=None, decimal_places=2)
+    value:            Money | None = None
     description:      str | None = None
     category:         str | None = None
     type:             str | None = None
@@ -66,6 +69,51 @@ class BanksRead(BanksCreate):
     model_config = ConfigDict(from_attributes=True)
 
     bank_id: int
+
+
+# ── Fixed Expense ─────────────────────────────────────────────────────────────
+
+class FixedExpenseCreate(BaseModel):
+    name:       str
+    value:      Money
+    due_day:    int = Field(ge=1, le=31)
+    category:   str | None = 'Outros'
+    account_id: int | None = None
+    is_active:  bool = True
+
+
+class FixedExpenseUpdate(BaseModel):
+    name:       str | None = None
+    value:      Money | None = None
+    due_day:    int | None = Field(default=None, ge=1, le=31)
+    category:   str | None = None
+    account_id: int | None = None
+    is_active:  bool | None = None
+
+
+class FixedExpenseRead(FixedExpenseCreate):
+    model_config = ConfigDict(from_attributes=True)
+
+    expense_id: int
+    created_at: datetime
+
+
+# ── Credit Installments View ──────────────────────────────────────────────────
+
+class CreditInstallmentRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    transaction_id:     int
+    account_id:         int | None
+    description:        str
+    category:           str | None
+    transaction_date:   date
+    total_value:        Money
+    total_installments: int
+    installment_number: int
+    due_date:           date
+    interest_rate:      Decimal
+    installment_value:  Money
 
 
 # ── Upload ────────────────────────────────────────────────────────────────────
