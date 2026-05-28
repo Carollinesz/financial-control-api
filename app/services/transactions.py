@@ -56,7 +56,7 @@ def handle_update(
     invalid_fields = set(data.keys()) - _UPDATABLE_FIELDS
     if invalid_fields:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail=f"Invalid fields: {', '.join(sorted(invalid_fields))}",
         )
 
@@ -88,7 +88,7 @@ def handle_bulk_upload(db: Session, file_bytes: bytes, filename: str) -> Transac
         missing = _REQUIRED_COLUMNS - set(df.columns)
         if missing:
             raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail=f"Missing required columns: {', '.join(sorted(missing))}",
             )
 
@@ -109,7 +109,7 @@ def handle_upload_ofx(db: Session, file_bytes: bytes) -> TransactionUploadResult
     try:
         raw_transactions = ofx.account.statement.transactions
     except AttributeError:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="OFX file has no transaction data")
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="OFX file has no transaction data")
 
     rows = [
         {

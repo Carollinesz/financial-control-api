@@ -11,7 +11,7 @@ from alembic import context
 
 config = context.config
 
-config.set_main_option('sqlalchemy.url', settings.DATABASE_URL)
+config.set_main_option('sqlalchemy.url', settings.MIGRATION_DATABASE_URL)
 
 target_metadata = Base.metadata
 

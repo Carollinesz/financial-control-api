@@ -1,7 +1,16 @@
+import os
 import pytest
 from fastapi.testclient import TestClient
 
-from app.main import app
+_TEST_DB_URL = os.environ.get(
+    "TEST_DATABASE_URL",
+    "postgresql+psycopg2://postgres:1234@localhost:3308/financial_api_test",
+)
+os.environ["DATABASE_URL"] = _TEST_DB_URL
+os.environ["MIGRATION_DATABASE_URL"] = _TEST_DB_URL
+
+from app.main import app  # noqa: E402 — must come after env override
+from app.core.database import get_db  # noqa: E402
 
 
 @pytest.fixture

@@ -1,6 +1,6 @@
 from decimal import Decimal
 from datetime import datetime, date
-from app.core.database import engine
+from app.core.database import engine_migrations
 
 from sqlalchemy import CheckConstraint, Date, ForeignKey, Numeric, String, TIMESTAMP, func, event, text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, registry, MappedAsDataclass
@@ -91,14 +91,16 @@ class fixed_expense(Base):
     )
 
 
+from app.constants.avaliable_banks import brazilian_banks
 
 @event.listens_for(banks.__table__, 'after_create')
 def insert_default_bank(target, connection, **kw):
-    connection.execute(
-        target.insert().values(bank_id=0, bank_name='Outros')
-    )
+    for idx, banks in enumerate(brazilian_banks):
+        connection.execute(
+            target.insert().values(bank_id=idx, bank_name=banks)
+        )
 
-Base.metadata.create_all(engine)
+Base.metadata.create_all(engine_migrations)
 
 _VIEWS = [
     """
@@ -153,7 +155,7 @@ _VIEWS = [
     """,
 ]
 
-with engine.connect() as _conn:
+with engine_migrations.connect() as _conn:
     for _sql in _VIEWS:
         _conn.execute(text(_sql))
     _conn.commit()
