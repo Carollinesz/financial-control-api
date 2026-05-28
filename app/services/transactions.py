@@ -41,7 +41,7 @@ def handle_create(db: Session, payload: TransactionCreate) -> transaction:
     return repo.create(db, payload.model_dump())
 
 
-_UPDATABLE_FIELDS = {"account_id", "transaction_date", "value", "description", "category"}
+_UPDATABLE_FIELDS = {"account_id", "transaction_date", "value", "description", "category", "tracking"}
 
 
 def _merge_update_data(obj: transaction, data: dict) -> dict:

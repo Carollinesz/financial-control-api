@@ -2,7 +2,7 @@ from decimal import Decimal
 from datetime import datetime, date
 from app.core.database import engine
 
-from sqlalchemy import CheckConstraint, Date, DDL, ForeignKey, Numeric, String, TIMESTAMP, func, event
+from sqlalchemy import CheckConstraint, Date, ForeignKey, Numeric, String, TIMESTAMP, func, event, text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, registry, MappedAsDataclass
 from sqlalchemy.dialects.postgresql import JSONB
 
@@ -36,6 +36,7 @@ class transaction(Base):
     type:             Mapped[str]            = mapped_column(String(50), nullable=False, default='debit')
     details:          Mapped[dict | None]     = mapped_column(JSONB, nullable=True, default=None)
     category:         Mapped[str]            = mapped_column(String(100), nullable=True, default='Outros')
+    tracking:         Mapped[bool]           = mapped_column(nullable=False, default=True, server_default='true')
     created_at:       Mapped[datetime]       = mapped_column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False, init=False)
 
     def __post_init__(self):
@@ -97,41 +98,62 @@ def insert_default_bank(target, connection, **kw):
         target.insert().values(bank_id=0, bank_name='Outros')
     )
 
-_CREATE_CREDIT_INSTALLMENTS_VIEW = DDL("""
-CREATE OR REPLACE VIEW credit_installments_view AS
-SELECT
-    t.transaction_id,
-    t.account_id,
-    t.description,
-    t.category,
-    t.transaction_date,
-    t.value                                                      AS total_value,
-    (t.details->>'installments')::int                            AS total_installments,
-    gs.n                                                         AS installment_number,
-    (t.details->>'first_payment')::date
-        + make_interval(months => gs.n - 1)                      AS due_date,
-    COALESCE((t.details->>'interest')::numeric, 0)               AS interest_rate,
-    CASE
-        WHEN COALESCE((t.details->>'interest')::numeric, 0) = 0 THEN
-            ROUND(t.value / (t.details->>'installments')::int, 4)
-        ELSE
-            ROUND(
-                t.value
-                * ((t.details->>'interest')::numeric
-                   * POWER(1 + (t.details->>'interest')::numeric,
-                           (t.details->>'installments')::int))
-                / (POWER(1 + (t.details->>'interest')::numeric,
-                         (t.details->>'installments')::int) - 1),
-                4)
-    END                                                          AS installment_value
-FROM transactions t
-CROSS JOIN LATERAL generate_series(1, (t.details->>'installments')::int) AS gs(n)
-WHERE t.type = 'credit'
-  AND t.details IS NOT NULL
-  AND (t.details->>'installments') IS NOT NULL
-  AND (t.details->>'first_payment') IS NOT NULL
-""")
-
-event.listen(transaction.__table__, 'after_create', _CREATE_CREDIT_INSTALLMENTS_VIEW)
-
 Base.metadata.create_all(engine)
+
+_VIEWS = [
+    """
+    CREATE OR REPLACE VIEW credit_installments_view AS
+    SELECT
+        t.transaction_id,
+        t.account_id,
+        t.description,
+        t.category,
+        t.transaction_date,
+        t.value                                                      AS total_value,
+        (t.details->>'installments')::int                            AS total_installments,
+        gs.n                                                         AS installment_number,
+        (t.details->>'first_payment')::date
+            + make_interval(months => gs.n - 1)                      AS due_date,
+        COALESCE((t.details->>'interest')::numeric, 0)               AS interest_rate,
+        CASE
+            WHEN COALESCE((t.details->>'interest')::numeric, 0) = 0 THEN
+                ROUND(t.value / (t.details->>'installments')::int, 4)
+            ELSE
+                ROUND(
+                    t.value
+                    * ((t.details->>'interest')::numeric
+                       * POWER(1 + (t.details->>'interest')::numeric,
+                               (t.details->>'installments')::int))
+                    / (POWER(1 + (t.details->>'interest')::numeric,
+                             (t.details->>'installments')::int) - 1),
+                    4)
+        END                                                          AS installment_value
+    FROM transactions t
+    CROSS JOIN LATERAL generate_series(1, (t.details->>'installments')::int) AS gs(n)
+    WHERE t.type = 'credit'
+      AND t.details IS NOT NULL
+      AND (t.details->>'installments') IS NOT NULL
+      AND (t.details->>'first_payment') IS NOT NULL
+    """,
+    """
+    CREATE OR REPLACE VIEW bank_account_balance_view AS
+    SELECT
+        ba.account_id,
+        ba.account_name,
+        ba.account_type,
+        COALESCE(ba.start_value, 0)                                                              AS start_value,
+        COALESCE(SUM(t.value) FILTER (WHERE t.tracking = true AND t.value > 0), 0)              AS total_gains,
+        COALESCE(SUM(ABS(t.value)) FILTER (WHERE t.tracking = true AND t.value < 0), 0)         AS total_expenses,
+        COALESCE(ba.start_value, 0)
+            + COALESCE(SUM(t.value) FILTER (WHERE t.tracking = true AND t.value > 0), 0)
+            - COALESCE(SUM(ABS(t.value)) FILTER (WHERE t.tracking = true AND t.value < 0), 0)   AS current_balance
+    FROM bank_accounts ba
+    LEFT JOIN transactions t ON t.account_id = ba.account_id
+    GROUP BY ba.account_id, ba.account_name, ba.account_type, ba.start_value
+    """,
+]
+
+with engine.connect() as _conn:
+    for _sql in _VIEWS:
+        _conn.execute(text(_sql))
+    _conn.commit()

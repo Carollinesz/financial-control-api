@@ -39,6 +39,7 @@ class TransactionCreate(BaseModel):
     category:         str  | None = None
     type:             str  | None = 'debit'
     details:          Optional[dict] = None
+    tracking:         bool = True
 
 
 class TransactionUpdate(BaseModel):
@@ -49,6 +50,7 @@ class TransactionUpdate(BaseModel):
     category:         str | None = None
     type:             str | None = None
     details:          Optional[dict] = None
+    tracking:         bool | None = None
 
 
 class TransactionRead(TransactionCreate):
@@ -56,19 +58,6 @@ class TransactionRead(TransactionCreate):
 
     transaction_id: int
     created_at:     datetime
-
-# ── Banks ───────────────────────────────────────────────────────────────
-
-class BanksCreate(BaseModel):
-    bank_name:      str
-
-class BanksUpdate(BaseModel):
-    bank_name:      str | None = None
-
-class BanksRead(BanksCreate):
-    model_config = ConfigDict(from_attributes=True)
-
-    bank_id: int
 
 
 # ── Fixed Expense ─────────────────────────────────────────────────────────────
@@ -98,6 +87,20 @@ class FixedExpenseRead(FixedExpenseCreate):
     created_at: datetime
 
 
+# ── Bank Account Balance View ─────────────────────────────────────────────────
+
+class BankAccountBalanceRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    account_id:      int
+    account_name:    str
+    account_type:    str
+    start_value:     Money
+    total_gains:     Money
+    total_expenses:  Money
+    current_balance: Money
+
+
 # ── Credit Installments View ──────────────────────────────────────────────────
 
 class CreditInstallmentRead(BaseModel):
@@ -125,3 +128,13 @@ class UploadRowError(BaseModel):
 class TransactionUploadResult(BaseModel):
     created: int
     errors: list[UploadRowError]
+
+# ── Banks ───────────────────────────────────────────────────────────────
+
+
+class BanksRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    bank_id: int
+    bank_name: str
+
