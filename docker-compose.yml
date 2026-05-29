@@ -2,8 +2,8 @@ services:
   db:
     image: postgres:16-alpine
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: financial_api_V1
     volumes:
       - postgres_data:/var/lib/postgresql/data
@@ -22,8 +22,8 @@ services:
     env_file:
       - .env
     environment:
-      DATABASE_URL: postgresql+psycopg2://postgres:postgres@db:5432/financial_api_V1
-      MIGRATION_DATABASE_URL: postgresql+psycopg2://postgres:postgres@db:5432/financial_api_V1
+      DATABASE_URL: ${DATABASE_URL}
+      MIGRATION_DATABASE_URL: ${MIGRATION_DATABASE_URL}
     depends_on:
       db:
         condition: service_healthy
