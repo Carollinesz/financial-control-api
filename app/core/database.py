@@ -14,6 +14,27 @@ def _build_safe_url(raw: str) -> str:
     return url.render_as_string(hide_password=False)
 
 
+def _ensure_user_exists(safe_url) -> None:
+    url = make_url(safe_url)
+    system_engine = create_engine( 
+        url.set(database="postgres"),
+        isolation_level="AUTOCOMMIT",
+    )
+    try:
+        with system_engine.connect() as conn:
+            exists = conn.execute(
+                text("SELECT 1 FROM pg_catalog.pg_roles WHERE rolname = :name"),
+                {"name": settings.USERNAME_API},
+            ).scalar()
+            if not exists:
+                conn.execute(
+                    text(f'CREATE USER "{settings.USERNAME_API}" WITH PASSWORD :password'),
+                    {"password": settings.USERNAME_PASSWORD},
+                )
+    finally:
+        system_engine.dispose()
+
+
 def _ensure_database_exists(safe_url: str) -> None:
     url = make_url(safe_url)
     system_engine = create_engine(
@@ -31,12 +52,12 @@ def _ensure_database_exists(safe_url: str) -> None:
     finally:
         system_engine.dispose()
 
-_migrations_url = _build_safe_url(settings.MIGRATION_DATABASE_URL)
-_safe_url = _build_safe_url(settings.DATABASE_URL)
-_ensure_database_exists(_safe_url)
 
-engine = create_engine(_safe_url, pool_pre_ping=True)
-engine_migrations = create_engine(_migrations_url, pool_pre_ping=True)
+_ensure_user_exists( _build_safe_url(settings.MIGRATION_DATABASE_URL))
+_ensure_database_exists(_build_safe_url(settings.MIGRATION_DATABASE_URL))
+
+engine = create_engine( _build_safe_url(settings.MIGRATION_DATABASE_URL), pool_pre_ping=True)
+engine_migrations = create_engine(_build_safe_url(settings.MIGRATION_DATABASE_URL), pool_pre_ping=True)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
