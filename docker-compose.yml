@@ -20,8 +20,8 @@ services:
     ports:
       - "8000:8000"
     environment:
-      DATABASE_URL: ${USERNAME_API}:${USERNAME_PASSWORD}@db:${DB_PORT}/financial_api_V1
-      MIGRATION_DATABASE_URL: ${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:${DB_PORT}/financial_api_V1
+      DATABASE_URL: postgresql+psycopg2://${USERNAME_API}:${USERNAME_PASSWORD}@db:${DB_PORT}/financial_api_V1
+      MIGRATION_DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:${DB_PORT}/financial_api_V1
     depends_on:
       db:
         condition: service_healthy
