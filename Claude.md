@@ -49,23 +49,19 @@ This is a microservice to control personal finances, it won't have a frontend, j
 │   │   ├── env.py**ignore** 
 │   │   └── script.py.mako **ignore**
 │   │   ├── versions/ **ignore**
-│   │   │   ├── .gitkeep
-│   │   │   ├── 0b36188ae3c6_new_table.py
-│   │   │   ├── 4998a5e45af5_initial.py
-│   │   │   ├── acfb8b4d6b45_relationship_accounts_and_banks.py
-│   │   │   ├── c2a2cfad97df_relationship_accounts_and_banks.py
-│   │   │   ├── c6132f0deb70_creating_constraints_in_accounts.py
-│   │   │   ├── dabfe2d642df_rename_columns_in_bank_account.py
-│   │   │   └── ea7e2ca54b1c_big_changes_kekw.py
+│   │   │   └── .gitkeep
 │   ├── app/ **Main application**
 │   │   └── main.py **Fast API init**
 │   │   ├── api/ **API Routes**
 │   │   │   ├── v1/
 │   │   │   │   └── router.py
 │   │   │   │   ├── routes/
-│   │   │   │   │   ├── banks.py **avaliable bank options to register in transactions and bank_accounts**
-│   │   │   │   │   ├── bank_accounts.py **users' bank_accounts**
-│   │   │   │   │   └── transactions.py **users' transactions**
+│   │   │   │   │   ├── banks.py **table avaliable bank options to register in transactions and bank_accounts**
+│   │   │   │   │   ├── bank_accounts.py **table users' bank_accounts**
+│   │   │   │   │   └── transactions.py **table users' transactions**
+│   │   │   │   │   ├── account_balances.py **view account balance**
+│   │   │   │   │   ├── credit_installments.py **view credit installments from transactions**
+│   │   │   │   │   └── fixed_expenses.py **table users' fixed expenses**
 │   │   ├── constants/ **empty**
 │   │   ├── core/ **Core config and database**
 │   │   │   ├── config.py **ignore**
@@ -73,14 +69,20 @@ This is a microservice to control personal finances, it won't have a frontend, j
 │   │   ├── models/ **Postgreesql Models**
 │   │   │   └── models.py **banks, transactions and bank_accounts models**
 │   │   ├── repositories/
+│   │   │   ├── account_balances.py
 │   │   │   ├── banks.py
 │   │   │   ├── bank_accounts.py
+│   │   │   ├── credit_installments.py
+│   │   │   ├── fixed_expenses.py
 │   │   │   └── transactions.py
 │   │   ├── schemas/ **Swagger & Pydentic documentation**
 │   │   │   └── schemas.py
 │   │   ├── services/
+│   │   │   ├── account_balances.py
 │   │   │   ├── banks.py
 │   │   │   ├── bank_accounts.py
+│   │   │   ├── credit_installments.py
+│   │   │   ├── fixed_expenses.py
 │   │   │   └── transactions.py
 │   ├── tests/ **pytest**
 │   │   └── conftest.py

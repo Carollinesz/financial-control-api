@@ -31,6 +31,9 @@ htmlcov/
 # Alembic
 # (keep versions/ tracked, ignore caches)
 
+# Docker build helpers
+_fix_encoding.py
+
 # OS
 .DS_Store
 Thumbs.db
