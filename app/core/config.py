@@ -11,10 +11,12 @@ class Settings(BaseSettings):
 
     DATABASE_URL: str
     MIGRATION_DATABASE_URL: str
-    
+
     USERNAME_API: str
-    USERNAME_PASSWORD: str 
+    USERNAME_PASSWORD: str
     DEBUG: bool = False
+
+    CORS_ORIGINS: list[str] = ["http://localhost:3000"]
 
 
 settings = Settings()
