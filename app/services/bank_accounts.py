@@ -16,8 +16,15 @@ def handle_get(db: Session, account_id: int) -> bank_account:
     return obj
 
 
-def handle_list(db: Session, skip: int, limit: int) -> list[bank_account]:
-    return repo.list_all(db, skip=skip, limit=limit)
+def handle_list(
+    db: Session,
+    skip: int,
+    limit: int,
+    bank_id: int | None = None,
+    account_name: str | None = None,
+    account_type: str | None = None,
+) -> list[bank_account]:
+    return repo.list_all(db, skip=skip, limit=limit, bank_id=bank_id, account_name=account_name, account_type=account_type)
 
 
 def handle_create(db: Session, payload: BankAccountCreate) -> bank_account:

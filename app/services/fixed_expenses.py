@@ -25,8 +25,15 @@ def handle_get(db: Session, expense_id: int) -> fixed_expense:
     return obj
 
 
-def handle_list(db: Session, skip: int, limit: int) -> list[fixed_expense]:
-    return repo.list_all(db, skip=skip, limit=limit)
+def handle_list(
+    db: Session,
+    skip: int,
+    limit: int,
+    account_id: int | None = None,
+    category: str | None = None,
+    is_active: bool | None = None,
+) -> list[fixed_expense]:
+    return repo.list_all(db, skip=skip, limit=limit, account_id=account_id, category=category, is_active=is_active)
 
 
 def handle_create(db: Session, payload: FixedExpenseCreate) -> fixed_expense:

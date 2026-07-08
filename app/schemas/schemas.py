@@ -132,9 +132,16 @@ class TransactionUploadResult(BaseModel):
 # ── Banks ───────────────────────────────────────────────────────────────
 
 
-class BanksRead(BaseModel):
+class BanksCreate(BaseModel):
+    bank_name: str
+
+
+class BanksUpdate(BaseModel):
+    bank_name: str | None = None
+
+
+class BanksRead(BanksCreate):
     model_config = ConfigDict(from_attributes=True)
 
     bank_id: int
-    bank_name: str
 

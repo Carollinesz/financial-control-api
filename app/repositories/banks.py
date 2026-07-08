@@ -12,7 +12,36 @@ def get_by_name(db: Session, bank_name: str) -> banks | None:
     return db.execute(stmt).scalar_one_or_none()
 
 
-def list_all(db: Session, skip: int = 0, limit: int = 100) -> list[banks]:
-    stmt = select(banks).offset(skip).limit(limit)
+def list_all(
+    db: Session,
+    skip: int = 0,
+    limit: int = 100,
+    bank_name: str | None = None,
+) -> list[banks]:
+    stmt = select(banks)
+    if bank_name is not None:
+        stmt = stmt.where(banks.bank_name.ilike(f"%{bank_name}%"))
+    stmt = stmt.offset(skip).limit(limit)
     return list(db.execute(stmt).scalars().all())
+
+
+def create(db: Session, data: dict) -> banks:
+    obj = banks(**data)
+    db.add(obj)
+    db.commit()
+    db.refresh(obj)
+    return obj
+
+
+def update(db: Session, obj: banks, data: dict) -> banks:
+    for key, value in data.items():
+        setattr(obj, key, value)
+    db.commit()
+    db.refresh(obj)
+    return obj
+
+
+def delete(db: Session, obj: banks) -> None:
+    db.delete(obj)
+    db.commit()
 

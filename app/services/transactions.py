@@ -32,8 +32,28 @@ def handle_get(db: Session, transaction_id: int) -> transaction:
     return obj
 
 
-def handle_list(db: Session, skip: int, limit: int) -> list[transaction]:
-    return repo.list_all(db, skip=skip, limit=limit)
+def handle_list(
+    db: Session,
+    skip: int,
+    limit: int,
+    account_id: int | None = None,
+    type: str | None = None,
+    category: str | None = None,
+    tracking: bool | None = None,
+    date_from: date | None = None,
+    date_to: date | None = None,
+) -> list[transaction]:
+    return repo.list_all(
+        db,
+        skip=skip,
+        limit=limit,
+        account_id=account_id,
+        type=type,
+        category=category,
+        tracking=tracking,
+        date_from=date_from,
+        date_to=date_to,
+    )
 
 
 def handle_create(db: Session, payload: TransactionCreate) -> transaction:
@@ -73,7 +93,7 @@ def handle_delete(db: Session, transaction_id: int) -> None:
 
 
 _REQUIRED_COLUMNS = {"transaction_date", "value", "description"}
-_OPTIONAL_COLUMNS = {"accountid_id", "category"}
+_OPTIONAL_COLUMNS = {"accountid_id", "category", "tracking"}
 
 def handle_bulk_upload(db: Session, file_bytes: bytes, filename: str) -> TransactionUploadResult:
     if filename.endswith(".xlsx") or filename.endswith(".xls"):

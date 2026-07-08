@@ -1,3 +1,5 @@
+from datetime import date
+
 from fastapi import APIRouter, Depends, File, Form, Query, UploadFile, status, HTTPException
 from sqlalchemy.orm import Session
 
@@ -12,9 +14,25 @@ router = APIRouter(prefix="/transactions", tags=["transactions"])
 def handle_list_transactions(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=500),
+    account_id: int | None = Query(None),
+    type: str | None = Query(None),
+    category: str | None = Query(None),
+    tracking: bool | None = Query(None),
+    date_from: date | None = Query(None),
+    date_to: date | None = Query(None),
     db: Session = Depends(get_db),
 ):
-    return service.handle_list(db, skip=skip, limit=limit)
+    return service.handle_list(
+        db,
+        skip=skip,
+        limit=limit,
+        account_id=account_id,
+        type=type,
+        category=category,
+        tracking=tracking,
+        date_from=date_from,
+        date_to=date_to,
+    )
 
 
 @router.get("/{transaction_id}", response_model=TransactionRead)

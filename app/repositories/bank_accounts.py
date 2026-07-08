@@ -13,8 +13,22 @@ def get_by_name(db: Session, account_name: str) -> bank_account | None:
     return db.execute(stmt).scalar_one_or_none()
 
 
-def list_all(db: Session, skip: int = 0, limit: int = 100) -> list[bank_account]:
-    stmt = select(bank_account).offset(skip).limit(limit)
+def list_all(
+    db: Session,
+    skip: int = 0,
+    limit: int = 100,
+    bank_id: int | None = None,
+    account_name: str | None = None,
+    account_type: str | None = None,
+) -> list[bank_account]:
+    stmt = select(bank_account)
+    if bank_id is not None:
+        stmt = stmt.where(bank_account.bank_id == bank_id)
+    if account_name is not None:
+        stmt = stmt.where(bank_account.account_name.ilike(f"%{account_name}%"))
+    if account_type is not None:
+        stmt = stmt.where(bank_account.account_type.ilike(f"%{account_type}%"))
+    stmt = stmt.offset(skip).limit(limit)
     return list(db.execute(stmt).scalars().all())
 
 

@@ -1,4 +1,5 @@
 import pandas as pd
+from datetime import date
 from ofxparse import OfxParser
 
 from sqlalchemy import select
@@ -14,12 +15,31 @@ def get_by_id(db: Session, transaction_id: int) -> transaction | None:
     return obj
 
 
-def list_all(db: Session, skip: int = 0, limit: int = 100) -> list[transaction]:
-    stmt = (
-        select(transaction)
-        .offset(skip)
-        .limit(limit)
-    )
+def list_all(
+    db: Session,
+    skip: int = 0,
+    limit: int = 100,
+    account_id: int | None = None,
+    type: str | None = None,
+    category: str | None = None,
+    tracking: bool | None = None,
+    date_from: date | None = None,
+    date_to: date | None = None,
+) -> list[transaction]:
+    stmt = select(transaction)
+    if account_id is not None:
+        stmt = stmt.where(transaction.account_id == account_id)
+    if type is not None:
+        stmt = stmt.where(transaction.type == type)
+    if category is not None:
+        stmt = stmt.where(transaction.category.ilike(f"%{category}%"))
+    if tracking is not None:
+        stmt = stmt.where(transaction.tracking == tracking)
+    if date_from is not None:
+        stmt = stmt.where(transaction.transaction_date >= date_from)
+    if date_to is not None:
+        stmt = stmt.where(transaction.transaction_date <= date_to)
+    stmt = stmt.order_by(transaction.transaction_id.desc()).offset(skip).limit(limit)
     return list(db.execute(stmt).scalars().all())
 
 

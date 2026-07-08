@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -9,8 +9,11 @@ router = APIRouter(prefix="/account-balances", tags=["account-balances"])
 
 
 @router.get("", response_model=list[BankAccountBalanceRead])
-def handle_list_account_balances(db: Session = Depends(get_db)):
-    return service.handle_list(db)
+def handle_list_account_balances(
+    account_type: str | None = Query(None),
+    db: Session = Depends(get_db),
+):
+    return service.handle_list(db, account_type=account_type)
 
 
 @router.get("/{account_id}", response_model=BankAccountBalanceRead)

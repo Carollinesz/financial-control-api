@@ -95,10 +95,13 @@ from app.constants.avaliable_banks import brazilian_banks
 
 @event.listens_for(banks.__table__, 'after_create')
 def insert_default_bank(target, connection, **kw):
-    for idx, banks in enumerate(brazilian_banks):
+    for bank in brazilian_banks:
         connection.execute(
-            target.insert().values(bank_id=idx, bank_name=banks)
+            target.insert().values(bank_name=bank)
         )
+    connection.execute(
+        text("SELECT setval(pg_get_serial_sequence('avaliable_banks', 'bank_id'), (SELECT MAX(bank_id) FROM avaliable_banks))")
+    )
 
 Base.metadata.create_all(engine_migrations)
 
