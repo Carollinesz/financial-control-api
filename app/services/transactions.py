@@ -93,9 +93,9 @@ def handle_delete(db: Session, transaction_id: int) -> None:
 
 
 _REQUIRED_COLUMNS = {"transaction_date", "value", "description"}
-_OPTIONAL_COLUMNS = {"accountid_id", "category", "tracking"}
+_OPTIONAL_COLUMNS = {"category", "tracking"}
 
-def handle_bulk_upload(db: Session, file_bytes: bytes, filename: str) -> TransactionUploadResult:
+def handle_bulk_upload(db: Session, file_bytes: bytes, filename: str, account_id: int) -> TransactionUploadResult:
     if filename.endswith(".xlsx") or filename.endswith(".xls"):
         engine = "openpyxl" if filename.endswith(".xlsx") else "xlrd"
         try:
@@ -112,15 +112,17 @@ def handle_bulk_upload(db: Session, file_bytes: bytes, filename: str) -> Transac
                 detail=f"Missing required columns: {', '.join(sorted(missing))}",
             )
 
+        df['account_id'] = account_id
+
         df = df.astype(object).where(df.notna(), None)
 
         return handle_upload_rows(db, df)
 
     if filename.endswith(".ofx"):
-        return handle_upload_ofx(db, file_bytes)
+        return handle_upload_ofx(db, file_bytes, account_id)
 
 
-def handle_upload_ofx(db: Session, file_bytes: bytes) -> TransactionUploadResult:
+def handle_upload_ofx(db: Session, file_bytes: bytes, account_id: int) -> TransactionUploadResult:
     try:
         ofx = OfxParser.parse(io.BytesIO(file_bytes))
     except Exception as exc:
@@ -140,6 +142,7 @@ def handle_upload_ofx(db: Session, file_bytes: bytes) -> TransactionUploadResult
         for txn in raw_transactions
     ]
     df = pd.DataFrame(rows)
+    df['account_id'] = account_id
     return handle_upload_rows(db, df)
 
 
