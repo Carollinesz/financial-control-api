@@ -95,7 +95,12 @@ def handle_delete(db: Session, transaction_id: int) -> None:
 _REQUIRED_COLUMNS = {"transaction_date", "value", "description"}
 _OPTIONAL_COLUMNS = {"category", "tracking"}
 
-def handle_bulk_upload(db: Session, file_bytes: bytes, filename: str, account_id: int) -> TransactionUploadResult:
+def handle_bulk_upload(db: Session, 
+                        file_bytes: bytes, 
+                        filename: str,
+                        account_id: int,
+                        tracking: bool = True) -> TransactionUploadResult:
+
     if filename.endswith(".xlsx") or filename.endswith(".xls"):
         engine = "openpyxl" if filename.endswith(".xlsx") else "xlrd"
         try:
@@ -113,16 +118,20 @@ def handle_bulk_upload(db: Session, file_bytes: bytes, filename: str, account_id
             )
 
         df['account_id'] = account_id
+        df['tracking'] = tracking
 
         df = df.astype(object).where(df.notna(), None)
 
         return handle_upload_rows(db, df)
 
     if filename.endswith(".ofx"):
-        return handle_upload_ofx(db, file_bytes, account_id)
+        return handle_upload_ofx(db, file_bytes, account_id, tracking)
 
 
-def handle_upload_ofx(db: Session, file_bytes: bytes, account_id: int) -> TransactionUploadResult:
+def handle_upload_ofx(db: Session, 
+                      file_bytes: bytes, 
+                      account_id: int,
+                      tracking: bool = True) -> TransactionUploadResult:
     try:
         ofx = OfxParser.parse(io.BytesIO(file_bytes))
     except Exception as exc:
@@ -142,7 +151,11 @@ def handle_upload_ofx(db: Session, file_bytes: bytes, account_id: int) -> Transa
         for txn in raw_transactions
     ]
     df = pd.DataFrame(rows)
+
+
     df['account_id'] = account_id
+    df['tracking'] = tracking
+
     return handle_upload_rows(db, df)
 
 
@@ -157,6 +170,7 @@ def handle_upload_rows(db: Session, df: pd.DataFrame) -> TransactionUploadResult
         raw_desc = row["description"]
         raw_category = row.get("category", None)
         raw_account_id = row.get("account_id", 0)
+        raw_tracking = row.get("tracking", 0)
         row_has_error = False
 
         parsed_category = str(raw_category).strip()[:100]
@@ -170,8 +184,10 @@ def handle_upload_rows(db: Session, df: pd.DataFrame) -> TransactionUploadResult
                 "value": str(raw_value),
                 "description": raw_desc,
                 "category": raw_category,
-                "account_id": str(raw_account_id)
+                "account_id": str(raw_account_id),
+                "tracking": raw_tracking
             }))
+
 
         try:
             if raw_account_id: 
@@ -210,13 +226,21 @@ def handle_upload_rows(db: Session, df: pd.DataFrame) -> TransactionUploadResult
             _error_row_("description not accepted")
             row_has_error = True
 
+        try:
+            parsed_tracking = int(raw_tracking)
+        except (ValueError, InvalidOperation):
+            _error_row_("tracking not accepted")
+            row_has_error = True
+
+
         if not row_has_error:
             valid_rows.append({
                 "transaction_date": parsed_date,
                 "value": parsed_value,
                 "description": parsed_desc,
                 "account_id": parsed_account_id,
-                "category": parsed_category
+                "category": parsed_category,
+                "tracking": parsed_tracking
             })
 
     if valid_rows:

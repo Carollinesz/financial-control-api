@@ -70,6 +70,7 @@ def handle_delete_transaction(transaction_id: int, db: Session = Depends(get_db)
 @router.post("/upload", response_model=TransactionUploadResult, status_code=status.HTTP_200_OK)
 async def handle_upload_transactions(
     account_id: int = Form(...),
+    tracking: bool = Form(True),
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
 ):
@@ -80,4 +81,4 @@ async def handle_upload_transactions(
             detail="Only .xlsx, .xls, .ofx files are supported",
         )
     contents = await file.read()
-    return service.handle_bulk_upload(db, contents, filename, account_id)
+    return service.handle_bulk_upload(db, contents, filename, account_id, tracking)
