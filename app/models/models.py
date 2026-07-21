@@ -122,7 +122,7 @@ _VIEWS = [
         COALESCE((t.details->>'interest')::numeric, 0)               AS interest_rate,
         CASE
             WHEN COALESCE((t.details->>'interest')::numeric, 0) = 0 THEN
-                ROUND(t.value / (t.details->>'installments')::int, 4)
+                ROUND(t.value / (t.details->>'installments')::int, 2)
             ELSE
                 ROUND(
                     t.value
@@ -131,7 +131,7 @@ _VIEWS = [
                                (t.details->>'installments')::int))
                     / (POWER(1 + (t.details->>'interest')::numeric,
                              (t.details->>'installments')::int) - 1),
-                    4)
+                    2)
         END                                                          AS installment_value
     FROM transactions t
     CROSS JOIN LATERAL generate_series(1, (t.details->>'installments')::int) AS gs(n)

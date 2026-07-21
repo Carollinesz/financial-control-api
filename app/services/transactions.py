@@ -93,7 +93,7 @@ def handle_delete(db: Session, transaction_id: int) -> None:
 
 
 _REQUIRED_COLUMNS = {"transaction_date", "value", "description"}
-_OPTIONAL_COLUMNS = {"category", "tracking"}
+_OPTIONAL_COLUMNS = {"category"}
 
 def handle_bulk_upload(db: Session, 
                         file_bytes: bytes, 
